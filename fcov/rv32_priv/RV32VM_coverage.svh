@@ -161,7 +161,7 @@ covergroup RV32VM_mstatus_mprv_cg with function sample(ins_rv32vm_t ins);
     mprv_mstatus: coverpoint ins.current.csr[12'h300][17]{
         bins set = {1};
     }
-    mpp_mstatus: coverpoint ins.current.csr[12'h300][12:11] {
+    mpp_mstatus: coverpoint ins.prev.csr[12'h300][12:11] {
         bins U_mode = {2'b00};
         bins S_mode = {2'b01};
     }
@@ -232,16 +232,14 @@ covergroup RV32VM_mstatus_mprv_cg with function sample(ins_rv32vm_t ins);
         ignore_bins ig5 = binsof(Mcause_sum.load_page_fault);
         ignore_bins ig6 = binsof(sum_sstatus.set);
     }
-    mprv_upage_smode_sumunset_noexec: cross mprv_mstatus, mpp_mstatus, exec_acc , priv_mode, satp_mode, PTE_upage_i, PageType_i, Mcause_sum, sum_sstatus { //ms.3
+    mprv_upage_smode_sumunset_noexec: cross mprv_mstatus, mpp_mstatus, exec_acc , priv_mode, satp_mode, sum_sstatus { //ms.3
         ignore_bins ig1 = binsof(priv_mode.S_mode);
         ignore_bins ig2 = binsof(mpp_mstatus.U_mode);
         ignore_bins ig3 = binsof(satp_mode.bare);
-        ignore_bins ig4 = binsof(Mcause_sum.store_amo_page_fault);
-        ignore_bins ig5 = binsof(Mcause_sum.load_page_fault);
-        ignore_bins ig6 = binsof(sum_sstatus.set);
+        ignore_bins ig4 = binsof(sum_sstatus.set);
     }
 
-    mprv_upage_smode_sumset_exec: cross mprv_mstatus, mpp_mstatus, exec_acc , priv_mode, satp_mode, PTE_upage_i, PageType_i, sum_sstatus  { //ms.4
+    mprv_upage_smode_sumset_exec: cross mprv_mstatus, mpp_mstatus, exec_acc , priv_mode, satp_mode, sum_sstatus  { //ms.4
         ignore_bins ig1 = binsof(priv_mode.S_mode);
         ignore_bins ig2 = binsof(mpp_mstatus.U_mode);
         ignore_bins ig3 = binsof(satp_mode.bare);
@@ -279,7 +277,7 @@ endgroup
 
 covergroup RV32VM_vm_permissions_cg with function sample(ins_rv32vm_t ins);
     option.per_instance = 0; 
-    //pte permission for leaf PTEs
+    // pte permission for leaf PTEs
     PTE_i_inv: coverpoint ins.current.PTE_i[7:0] { //pte.2
         wildcard bins leaflvl_u = {8'b???11??0};
         wildcard bins leaflvl_s = {8'b???01??0};
@@ -419,7 +417,11 @@ covergroup RV32VM_vm_permissions_cg with function sample(ins_rv32vm_t ins);
     Nopagefault: coverpoint  ins.current.csr[12'h143]{
         bins no_fault  = {32'd0};
     }
-    priv_mode: coverpoint ins.current.mode{
+    priv_mode: coverpoint ins.prev.mode{ //old used during exceptions
+        bins S_mode = {2'b01};
+        bins U_mode = {2'b00};
+    }
+    curr_priv_mode: coverpoint ins.current.mode{ //new used for no fault scenarios
         bins S_mode = {2'b01};
         bins U_mode = {2'b00};
     }
@@ -633,12 +635,14 @@ covergroup RV32VM_vm_permissions_cg with function sample(ins_rv32vm_t ins);
     upage_smode_sumset_noexec_s: cross PTE_upage_i, PageType_i, mode, Mcause, exec_acc, priv_mode , sum_sstatus { //pte.9
         ignore_bins ig1 = binsof(Mcause.load_page_fault);
         ignore_bins ig2 = binsof(Mcause.store_amo_page_fault);
+        ignore_bins ig3 = binsof(priv_mode.U_mode);
+        ignore_bins ig4 = binsof(sum_sstatus.notset);
     }
-    upage_smode_sumset_read_s: cross PTE_upage_d, PageType_d, mode,  Nopagefault, read_acc, priv_mode , sum_sstatus  { //pte.9
+    upage_smode_sumset_read_s: cross PTE_upage_d, PageType_d, mode, Nopagefault, read_acc, priv_mode, sum_sstatus  { //pte.9
         ignore_bins ig1 = binsof(priv_mode.U_mode);
         ignore_bins ig2 = binsof(sum_sstatus.notset);
     }
-    upage_smode_sumset_write_s: cross PTE_upage_d, PageType_d, mode,  Nopagefault, write_acc, priv_mode, sum_sstatus  { //pte.9
+    upage_smode_sumset_write_s: cross PTE_upage_d, PageType_d, mode,  Nopagefault, write_acc,  priv_mode, sum_sstatus {// , write_acc//pte.9
         ignore_bins ig1 = binsof(priv_mode.U_mode);
         ignore_bins ig2 = binsof(sum_sstatus.notset);
     }
